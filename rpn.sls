@@ -8,6 +8,7 @@
           to-bot
           tuck
           over
+          double
           define-stack-operation)
   (import (chezscheme))
 
@@ -27,6 +28,21 @@
                (unless (procedure? parser)
                  (assertion-violation 'define-stack-operation "invalid parser" parser))
                parser)))])))
+
+(define-syntax mapply
+  (lambda (stx)
+    (syntax-case stx ()
+      [(_ f (arg ...))
+      #'(f arg ...)])))
+
+(define-stack-operation double
+  (lambda (stx)
+    (syntax-case stx ()
+    [(macro c stack args ...)
+     (if (not (null? #'stack))
+      (with-syntax ([a (generate-temporaries #'stack)])
+        #`(let-values ([a (mapply values stack)]) (macro c #,(append #'a #'a) args ...)))
+        (syntax-violation 'tuck "stack is empty, can't double" #'stack))])))
 
 (define-stack-operation tuck
   (lambda (stx)
@@ -86,12 +102,6 @@
      (if (>= (length #'stack) 2)
         #`(macro c #,(cons (cadr #'stack) (cons (car #'stack) (cddr #'stack))) arg ...)
         (syntax-violation 'swap "stack is less than size 2, cant swap" #'stack))])))
-
-(define-syntax mapply
-  (lambda (stx)
-    (syntax-case stx ()
-      [(_ f (arg ...))
-      #'(f arg ...)])))
 
 (define-syntax rpn-backend
   (lambda (stx)
