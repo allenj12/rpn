@@ -2,7 +2,7 @@
 Reverse polish notation mini DSL for chezscheme. The stack, and its effects all take place at complie time and are disolved by runtime.
 
 ## Usage
-Their are two main macros rpn and rpnv. They are exactly the same except rpn expects 1 final result in the stack, it is a compile time error to have 0 or more than 1 results. rpnv allows multiple results and and returns theme using schemes values fn for multiple value return.
+Their are two main macros rpn and rpnv. They are exactly the same except rpn expects 1 final result in the stack, it is a compile time error to have 0 or more than 1 results. rpnv allows multiple results and and returns them using schemes values fn for multiple value return.
 
 ## Examples
 If both arguments for numbers are supplied for (* - / + expt) it is calculated at compile time
@@ -10,7 +10,7 @@ If both arguments for numbers are supplied for (* - / + expt) it is calculated a
 (expand '(rpn 1 2 +)) 
 3
 ```
-dup has the expected effect but also making sure calculations are not repeated
+dup has the expected effect but also ensures sure calculations are not repeated
 ```
 (expand '(rpn x y + dup +))
 (let ([g17 (+ x y)]) (+ g17 g17))
