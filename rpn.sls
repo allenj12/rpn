@@ -5,6 +5,8 @@
           swap
           skim
           to-top
+          to-bot
+          tuck
           over
           define-stack-operation)
   (import (chezscheme))
@@ -26,14 +28,31 @@
                  (assertion-violation 'define-stack-operation "invalid parser" parser))
                parser)))])))
 
+(define-stack-operation tuck
+  (lambda (stx)
+    (syntax-case stx ()
+    [(macro c stack args ...)
+     (if (> (length #'stack) 1)
+      (with-syntax ([(a) (generate-temporaries '(tmp))])
+        #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons (cadr #'stack) (cons #'a (cddr #'stack)))) args ...)))
+        (syntax-violation 'tuck "stack is empty, can't top" #'stack))])))
+
 (define-stack-operation over
   (lambda (stx)
     (syntax-case stx ()
     [(macro c stack args ...)
-     (if (not (null? #'stack))
+     (if (> (length #'stack) 1)
       (with-syntax ([(a) (generate-temporaries '(tmp))])
-        #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons (cadr #'stack) (cons #'a (cddr #'stack)))) args ...)))
-        (syntax-violation 'top "stack is empty, cant top" #'stack))])))
+        #`(let ([a #,(cadr #'stack)]) (macro c #,(cons #'a #'stack) args ...)))
+        (syntax-violation 'over "stack is less than size 2, can't over" #'stack))])))
+
+(define-stack-operation to-bot
+  (lambda (stx)
+    (syntax-case stx ()
+    [(macro c stack args ...)
+     (if (not (null? #'stack))
+        #`(macro c #,(reverse (cons (car #'stack) (reverse (cdr #'stack)))) args ...)
+        (syntax-violation 'to-bot "stack is empty, can't bot" #'stack))])))
 
 (define-stack-operation to-top
   (lambda (stx)
@@ -41,7 +60,7 @@
     [(macro c stack args ...)
      (if (not (null? #'stack))
         #`(macro c #,(cons (car (reverse #'stack)) (reverse (cdr (reverse #'stack)))) args ...)
-        (syntax-violation 'top "stack is empty, cant top" #'stack))])))
+        (syntax-violation 'to-top "stack is empty, can't top" #'stack))])))
 
 (define-stack-operation skim
   (lambda (stx)
@@ -49,7 +68,7 @@
     [(macro c stack args ...)
      (if (not (null? #'stack))
         #`(macro c #,(list (car #'stack)) args ...)
-        (syntax-violation 'skim "stack is empty, cant skim" #'stack))])))
+        (syntax-violation 'skim "stack is empty, can't skim" #'stack))])))
 
 (define-stack-operation dup
   (lambda (stx)
@@ -58,7 +77,7 @@
      (if (not (null? #'stack))
       (with-syntax ([(a) (generate-temporaries '(tmp))])
         #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons #'a (cdr #'stack))) args ...)))
-        (syntax-violation 'dup "stack is empty, cant dup" #'stack))])))
+        (syntax-violation 'dup "stack is empty, can't dup" #'stack))])))
 
 (define-stack-operation swap
   (lambda (stx)
