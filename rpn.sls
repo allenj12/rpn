@@ -42,7 +42,7 @@
      (if (not (null? #'stack))
       (with-syntax ([a (generate-temporaries #'stack)])
         #`(let-values ([a (mapply values stack)]) (macro c #,(append #'a #'a) args ...)))
-        (syntax-violation 'tuck "stack is empty, can't double" #'stack))])))
+        (syntax-violation 'double "stack is empty, can't double" #'stack))])))
 
 (define-stack-operation tuck
   (lambda (stx)
@@ -51,7 +51,7 @@
      (if (> (length #'stack) 1)
       (with-syntax ([(a) (generate-temporaries '(tmp))])
         #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons (cadr #'stack) (cons #'a (cddr #'stack)))) args ...)))
-        (syntax-violation 'tuck "stack is empty, can't top" #'stack))])))
+        (syntax-violation 'tuck "stack is empty, can't tuck" #'stack))])))
 
 (define-stack-operation over
   (lambda (stx)
