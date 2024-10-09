@@ -59,7 +59,7 @@
     [(macro c stack args ...)
      (if (> (length #'stack) 1)
       (with-syntax ([(a) (generate-temporaries '(tmp))])
-        #`(let ([a #,(cadr #'stack)]) (macro c #,(cons #'a #'stack) args ...)))
+        #`(let ([a #,(cadr #'stack)]) (macro c #,(cons #'a (cons (car #'stack) (cons #'a (cddr #'stack)))) args ...)))
         (syntax-violation 'over "stack is less than size 2, can't over" #'stack))])))
 
 (define-stack-operation to-bot
