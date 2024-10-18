@@ -84,10 +84,10 @@
   (lambda (stx)
     (syntax-case stx ()
     [(macro c stack args ...)
-     (if (> (length #'stack) 2)
+     (if (>= (length #'stack) 2)
       (with-syntax ([(a) (generate-temporaries '(tmp))])
         #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons (cadr #'stack) (cons #'a (cddr #'stack)))) args ...)))
-        (syntax-violation 'tuck "stack is less than size 2, can't top" #'stack))])))
+        (syntax-violation 'tuck "stack is less than size 2, can't tuck" #'stack))])))
 
 (define-stack-operation over
   (lambda (old) (- old 2))
@@ -195,7 +195,7 @@
                     [t (cadr #'stack)]
                     [f (car #'stack)]
                     [rest (take (cdddr #'stack) (- (syntax->datum #'in) 3))])
-        #`(macro c #,(cons #'(mapply (if co t f) rest) (drop (cdddr #'stack) (- (syntax->datum #'in) 3))) args ...))
+        #`(macro c #,(cons #`(mapply (if co t f) #,(reverse #'rest)) (drop (cdddr #'stack) (- (syntax->datum #'in) 3))) args ...))
         (syntax-violation 'iff "stack is less than size specified input, can't iff" #'stack))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 3)
@@ -222,9 +222,10 @@
     (syntax-case stx ()
     [(macro in _ c stack args ...)
      (if (>= (length #'stack) (syntax->datum #'in))
-      (with-syntax ([f (take #'stack (syntax->datum #'in))]
+      (with-syntax ([as (take (cdr #'stack) (syntax->datum #'in))]
+                    [f (car #'stack)]
                     [rest (drop #'stack (syntax->datum #'in))])
-        #`(macro c #,(cons #'f #'rest) args ...))
+        #`(macro c #,(cons (cons #'f (reverse #'as)) #'rest) args ...))
         (syntax-violation 'iff "stack is less than size specified input, can't iff" #'stack))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 1)
