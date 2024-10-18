@@ -2,7 +2,7 @@
 Reverse polish notation mini DSL for chezscheme. The stack, and its effects all take place at complie time and are disolved by runtime.
 
 ## Usage
-Their are two main macros rpn and rpnv. They are exactly the same except rpn expects 1 final result in the stack, it is a compile time error to have 0 or more than 1 results. rpnv allows multiple results and and returns them using schemes values fn for multiple value return.
+Their are a couple of main macros rpn, rpnv, rpnl, rpnlv, :, :v. The ones that do not end in 'v' will complie time error if it does not return a single value, it is a compile time error to have 0 or more than 1 results. The ones that end in 'v' allows multiple results and and returns them using schemes values fn for multiple value return.
 
 ## Examples
 If both arguments for numbers are supplied for (* - / + expt) it is calculated at compile time
@@ -41,16 +41,33 @@ If your function returns multiple values you can specify how many values that ar
 (rpn 3 (1 3 dup3) * *)
 27
 ```
-You can define your own stack operators such as dup
+You can define your own stack operators such as dup that do the work at compile time
 ```
 (define-stack-operation dup
+  (lambda (old) (- old 1)) ;;stack effect after taking args
+  (lambda (old new) (+ new 2)) ;;stack effect after spitting values out,old is useful to operate on the whole stack if need be
   (lambda (stx)
     (syntax-case stx ()
     [(macro c stack args ...)
      (if (not (null? #'stack))
       (with-syntax ([(a) (generate-temporaries '(tmp))])
         #`(let ([a #,(car #'stack)]) (macro c #,(cons #'a (cons #'a (cdr #'stack))) args ...)))
-        (syntax-violation 'dup "stack is empty, cant dup" #'stack))])))
+        (syntax-violation 'dup "stack is empty, can't dup" #'stack))])))
+```
+Its optional to implement a stack operation that takes in user supplied stack values
+```
+;;friendly to lang if implementation
+(define-stack-operation rif
+  ;; ... code removed for showing
+    (syntax-case stx ()
+    [(macro in _ c stack args ...) ;; in is also supplied here and also out as _ since its not used
+     (if (>= (length #'stack) (syntax->datum #'in))
+      (with-syntax ([co (caddr #'stack)]
+                    [t (cadr #'stack)]
+                    [f (car #'stack)]
+                    [rest (take (cdddr #'stack) (- (syntax->datum #'in) 3))])
+        #`(macro c #,(cons #'(mapply (if co t f) rest) (drop (cdddr #'stack) (- (syntax->datum #'in) 3))) args ...))
+        (syntax-violation 'iff "stack is less than size specified input, can't iff" #'stack))]
 ```
 A slightly bit more involved example
 ```
@@ -59,3 +76,21 @@ A slightly bit more involved example
   (let ([g45 (cadr g44)])
     (/ (* g45 g45) (car g44))))
   ```
+rpnl and rpnlv are the lambda functions and can be evaled with 'ev'
+```
+(rpn 1 2 (rpnl +) (3 ev))
+3
+```
+: and :v define a top level function for you, functions defined with : and :v do not need their stack effects made explicit when calling
+```
+(: x2 dup *)
+(rpn 4 x2)
+16
+```
+Here is a more involved example involving factorial
+```
+(: factorial dup 1 (2 =) (rpnl 1 *) (rpnl dup 1 - factorial *) (4 rif))
+(factorial 5)
+120
+```
+Note that the DSL is not really friendly to functions returning nothing.
