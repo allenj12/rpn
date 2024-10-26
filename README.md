@@ -93,4 +93,4 @@ Here is a more involved example involving factorial
 (factorial 5)
 120
 ```
-Note that the DSL is not really friendly to functions returning nothing.
+Note that the DSL is not really friendly to functions with side-effects. The way around this for the time being is to call 'SE' on a function you only want for the side effects, internally this uses 'dup' to force a let binding and drops binding from the stack keeping the expression without having a void/null on the stack. Their are downsides to this, but should cover most cases.
