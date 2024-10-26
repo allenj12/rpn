@@ -7,6 +7,7 @@
           :v
           dup
           swap
+          rrot
           rot
           skim
           drop
@@ -18,8 +19,9 @@
           define-stack-operation
           rif
           ev
-          dump
-          p)
+          p
+          SE
+          dis)
   (import (chezscheme))
 
 (define key)
@@ -76,7 +78,7 @@
      (if (not (null? #'stack))
       (with-syntax ([a (generate-temporaries #'stack)])
         #`(let-values ([a (mapply values stack)]) (macro c #,(append #'a #'a) args ...)))
-        (syntax-violation 'tuck "stack is empty, can't double" #'stack))])))
+        (syntax-violation 'double "stack is empty, can't double" #'stack))])))
 
 (define-stack-operation tuck 
   (lambda (old) (- old 2))
@@ -161,11 +163,56 @@
         #`(macro c #,(cdr #'stack) args ...)
         (syntax-violation 'drop "stack is empty, can't drop" #'stack))])))
 
+(define-stack-operation rrot
+  (lambda (old) (- old 3))
+  (lambda (old new) (+ new 3))
+  (lambda (stx)
+    (define take
+        (lambda (lst n)
+          (let loop ((result '()) (i n) (lst lst))
+            (if (or (null? lst) (<= i 0))
+                (reverse result)
+                (loop (cons (car lst) result) (- i 1) (cdr lst))))))
+    (define drop
+      (lambda (lis k)
+        (let iter ((lis lis) (k k))
+          (if (zero? k) lis (iter (cdr lis) (- k 1))))))
+    (syntax-case stx ()
+    [(macro (in _) c (st ...) args ...)
+     (if (>= (length #'(st ...)) (syntax->datum #'in))
+      (with-syntax ([front (car #'(st ...))]
+                    [rest (cdr (take #'(st ...) (syntax->datum #'in)))])
+        #`(macro c #,(append (reverse (cons #'front (reverse #'rest))) (drop #'(st ...) (syntax->datum #'in))) args ...))
+        (syntax-violation 'rot "stack is less than size 3 can't rot" #'stack))]
+    [(macro c stack args ...)
+     (if (>= (length #'stack) 3)
+      (with-syntax ([cc (caddr #'stack)]
+                    [b (cadr #'stack)]
+                    [a (car #'stack)])
+        #`(macro c #,(cons #'b (cons #'cc (cons #'a (cdddr #'stack)))) args ...))
+        (syntax-violation 'rot "stack is less than size 3 can't rot" #'stack))])))
+
 (define-stack-operation rot
   (lambda (old) (- old 3))
   (lambda (old new) (+ new 3))
   (lambda (stx)
+    (define take
+        (lambda (lst n)
+          (let loop ((result '()) (i n) (lst lst))
+            (if (or (null? lst) (<= i 0))
+                (reverse result)
+                (loop (cons (car lst) result) (- i 1) (cdr lst))))))
+    (define drop
+      (lambda (lis k)
+        (let iter ((lis lis) (k k))
+          (if (zero? k) lis (iter (cdr lis) (- k 1))))))
     (syntax-case stx ()
+    [(macro (in _) c (st ...) args ...)
+     (if (>= (length #'(st ...)) (syntax->datum #'in))
+      (with-syntax ([back (car (reverse (take #'(st ...) (syntax->datum #'in))))]
+                    [rest (take #'(st ...) (- (syntax->datum #'in) 1))])
+        #`(macro c #,(cons #'back (append #'rest (drop #'(st ...) (syntax->datum #'in)))) args ...))
+        (syntax-violation 'rot "stack is less than size 3 can't rot" #'stack))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 3)
       (with-syntax ([cc (caddr #'stack)]
@@ -178,6 +225,13 @@
   (lambda (old) (- old 3))
   (lambda (old new) (+ new 1))
   (lambda (stx)
+    (define make-n
+        (lambda (n)
+          (let loop ([result '()]
+                    [n n])
+            (if (<= n 0)
+              result
+              (loop (cons 'tmp result) (sub1 n))))))
     (define take
         (lambda (lst n)
           (let loop ((result '()) (i n) (lst lst))
@@ -189,14 +243,22 @@
         (let iter ((lis lis) (k k))
           (if (zero? k) lis (iter (cdr lis) (- k 1))))))
     (syntax-case stx ()
-    [(macro in _ c stack args ...)
-     (if (>= (length #'stack) (syntax->datum #'in))
-      (with-syntax ([co (caddr #'stack)]
-                    [t (cadr #'stack)]
-                    [f (car #'stack)]
-                    [rest (take (cdddr #'stack) (- (syntax->datum #'in) 3))])
-        #`(macro c #,(cons #`(mapply (if co t f) #,(reverse #'rest)) (drop (cdddr #'stack) (- (syntax->datum #'in) 3))) args ...))
-        (syntax-violation 'iff "stack is less than size specified input, can't iff" #'stack))]
+    [(macro (in out) c (st ...) args ...)
+     (if (>= (length #'(st ...)) (syntax->datum #'in))
+      (if (syntax->datum #'out)
+        (with-syntax ([co (caddr #'(st ...))]
+                      [t (cadr #'(st ...))]
+                      [f (car #'(st ...))]
+                      [rest (take (cdddr #'(st ...)) (- (syntax->datum #'in) 3))]
+                      [bindings (generate-temporaries (make-n (syntax->datum #'out)))])
+          #`(let-values ([bindings #,(cons #'(if co t f) (reverse #'rest))])
+              (macro c #,(append (reverse #'bindings) (drop (cdddr #'(st ...)) (- (syntax->datum #'in) 3))) args ...)))
+        (with-syntax ([co (caddr #'(st ...))]
+                      [t (cadr #'(st ...))]
+                      [f (car #'(st ...))]
+                      [rest (take (cdddr #'(st ...)) (- (syntax->datum #'in) 3))])
+          #`(macro c #,(cons #`(mapply (if co t f) #,(reverse #'rest)) (drop (cdddr #'(st ...)) (- (syntax->datum #'in) 3))) args ...)))
+        (syntax-violation 'iff "stack is less than size specified input, can't iff" #'(st ...)))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 3)
       (with-syntax ([co (caddr #'stack)]
@@ -209,6 +271,13 @@
   (lambda (old) (- old 1))
   (lambda (old new) (+ new 1))
   (lambda (stx)
+    (define make-n
+        (lambda (n)
+          (let loop ([result '()]
+                    [n n])
+            (if (<= n 0)
+              result
+              (loop (cons 'tmp result) (sub1 n))))))
     (define take
         (lambda (lst n)
           (let loop ((result '()) (i n) (lst lst))
@@ -220,13 +289,20 @@
         (let iter ((lis lis) (k k))
           (if (zero? k) lis (iter (cdr lis) (- k 1))))))
     (syntax-case stx ()
-    [(macro in _ c stack args ...)
-     (if (>= (length #'stack) (syntax->datum #'in))
-      (with-syntax ([as (take (cdr #'stack) (syntax->datum #'in))]
-                    [f (car #'stack)]
-                    [rest (drop #'stack (syntax->datum #'in))])
-        #`(macro c #,(cons (cons #'f (reverse #'as)) #'rest) args ...))
-        (syntax-violation 'iff "stack is less than size specified input, can't iff" #'stack))]
+    [(macro (in out) c (st ...) args ...)
+     (if (>= (length #'(st ...)) (syntax->datum #'in))
+      (if (syntax->datum #'out)
+        (with-syntax ([as (take (cdr #'(st ...)) (- (syntax->datum #'in) 1))]
+                      [f (car #'(st ...))]
+                      [rest (drop #'(st ...) (syntax->datum #'in))]
+                      [bindings (generate-temporaries (make-n (syntax->datum #'out)))])
+          #`(let-values ([bindings #,(cons #'f (reverse #'as))])
+              (macro c #,(append (reverse #'bindings) #'rest) args ...)))
+        (with-syntax ([as (take (cdr #'(st ...)) (- (syntax->datum #'in) 1))]
+                      [f (car #'(st ...))]
+                      [rest (drop #'(st ...) (syntax->datum #'in))])
+          #`(macro c #,(cons (cons #'f (reverse #'as)) #'rest) args ...)))
+          (syntax-violation 'iff "stack is less than size specified input, can't iff" #'(st ...)))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 1)
       (with-syntax ([fn (car #'stack)])
@@ -271,14 +347,14 @@
               (number? (syntax->datum #'num))
               (procedure? (lookup #'so #'key)))
          (let ([parser (lookup #'so #'key)])
-            (parser #'(rpn-backend num #f c (st ...) arg ...)))]
+            (parser #'(rpn-backend (num #f) c (st ...) arg ...)))]
         [(_ c (st ...) (num out so) arg ...)
          (and (identifier? #'so)
               (number? (syntax->datum #'num))
               (number? (syntax->datum #'out))
               (procedure? (lookup #'so #'key)))
          (let ([parser (lookup #'so #'key)])
-            (parser #'(rpn-backend num out c (st ...) arg ...)))]
+            (parser #'(rpn-backend (num out) c (st ...) arg ...)))]
         [(_ c (st ...) (num fn) arg ...)
           (integer? (syntax->datum #'num))
           (if (>= (length #'(st ...)) (syntax->datum #'num))
@@ -434,9 +510,9 @@
      [(_ name arg ...)
       #'(arg-count name (rpnv arg ...) () 0 arg ...)])))
 
-(define dump
-  (lambda (l) (apply values l)))
-
 (define print-forward (lambda (x) (display x) (newline) x))
 
-(: p (1 1 print-forward)))
+(: p (1 1 print-forward))
+
+(:v SE dup drop drop)
+(:v dis (1 display) SE (0 newline) SE))
