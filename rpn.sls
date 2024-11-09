@@ -25,7 +25,8 @@
           dis
           v
           v.
-          --)
+          --
+          curry)
   (import (chezscheme))
 
 (define key)
@@ -524,6 +525,10 @@
               out-num)))]
      [(_ name arg ...)
       #'(arg-count name (rpnv arg ...) () 0 arg ...)])))
+
+(: curry (2 1 (lambda (init f)
+                (lambda rest
+                  (apply f (append rest (list init)))))))
 
 (define print-forward (lambda (x) (display x) (newline) x))
 
