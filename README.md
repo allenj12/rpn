@@ -97,6 +97,6 @@ Here is a more involved example involving factorial
 ```
 Sometimes you might want to override the stack effect that is calculated for you for a function. For example your function might take arguments that you dont move or process. You can explicitly state stack effects as so.
 ```
-(: some-func (3 -- 2) +) ;; This function expects and argument at the bottom of the stack it will still return at the bottom of the stack.
+(: some-func (3 -- 2) +) ;; This function expects an argument at the bottom of the stack that it will still return again.
 ```
 Note that the DSL is not really friendly to functions with side-effects. The way around this for the time being is to call 'SE' on a function you only want for the side effects, internally this uses 'dup' to force a let binding and drops binding from the stack keeping the expression without having a void/null on the stack. Their are downsides to this, but should cover most cases.
