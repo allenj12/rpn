@@ -5,6 +5,8 @@ Reverse polish notation mini DSL for chezscheme. The stack, and its effects all 
 Their are a couple of main macros rpn, rpnv, rpnl, rpnlv, :, :v. The ones that do not end in 'v' will complie time error if it does not return a single value, it is a compile time error to have 0 or more than 1 results. The ones that end in 'v' allows multiple results and and returns them using schemes values fn for multiple value return.
 
 ## Examples
+More in depth examples can be found at: https://github.com/allenj12/rpn-examples/tree/main
+
 If both arguments for numbers are supplied for (* - / + expt) it is calculated at compile time
 ```
 (expand '(rpn 1 2 +)) 
@@ -92,5 +94,9 @@ Here is a more involved example involving factorial
 (: factorial dup 1 (2 =) (rpnl 1 *) (rpnl dup 1 - factorial *) (4 rif))
 (factorial 5)
 120
+```
+Sometimes you might want to override the stack effect that is calculated for you for a function. For example your function might take arguments that you dont move or process. You can explicitly state stack effects as so.
+```
+(: some-func (3 -- 2) +) ;; This function expects and argument at the bottom of the stack it will still return at the bottom of the stack.
 ```
 Note that the DSL is not really friendly to functions with side-effects. The way around this for the time being is to call 'SE' on a function you only want for the side effects, internally this uses 'dup' to force a let binding and drops binding from the stack keeping the expression without having a void/null on the stack. Their are downsides to this, but should cover most cases.
