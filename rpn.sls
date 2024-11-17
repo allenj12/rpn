@@ -528,7 +528,7 @@
 
 (: curry (2 1 (lambda (init f)
                 (lambda rest
-                  (apply f (append rest (list init)))))))
+                  (apply f (cons init rest))))))
 
 (define print-forward (lambda (x) (display x) (newline) x))
 
