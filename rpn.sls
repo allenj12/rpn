@@ -229,14 +229,14 @@
       (with-syntax ([front (car #'(st ...))]
                     [rest (cdr (take-n #'(st ...) (syntax->datum #'in)))])
         #`(macro c #,(append (reverse (cons #'front (reverse #'rest))) (drop-n #'(st ...) (syntax->datum #'in))) args ...))
-        (syntax-violation 'rot "stack is less than size 3 can't rot" #'stack))]
+        (syntax-violation 'rrot "stack is less than size 3 can't rrot" #'stack))]
     [(macro c stack args ...)
      (if (>= (length #'stack) 3)
       (with-syntax ([cc (caddr #'stack)]
                     [b (cadr #'stack)]
                     [a (car #'stack)])
         #`(macro c #,(cons #'b (cons #'cc (cons #'a (cdddr #'stack)))) args ...))
-        (syntax-violation 'rot "stack is less than size 3 can't rot" #'stack))])))
+        (syntax-violation 'rrot "stack is less than size 3 can't rrot" #'stack))])))
 
 (define-stack-operation rot
   (lambda (old) (- old 3))
