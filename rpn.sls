@@ -5,7 +5,7 @@
           rpnl
           rpnlv
           :
-          :v
+          :s
           dup
           swap
           rrot
@@ -25,8 +25,9 @@
           dis
           v
           v.
-          --
-          curry)
+          curry
+          {
+          })
   (import (chezscheme))
 
 (define key)
@@ -311,49 +312,62 @@
         #`(macro c #,(cons #'(fn) (cdr #'stack)) args ...))
         (syntax-violation 'ev "stack is less than size 1, can't ev" #'stack))])))
 
+(define-syntax {
+  (lambda (stx)
+      (syntax-violation '{ "invalid use of keyword" stx)))
+
+(define-syntax }
+  (lambda (stx)
+      (syntax-violation '} "invalid use of keyword" stx)))
+
 (define-syntax rpn-backend
   (lambda (stx)
     (lambda (lookup)
-      (syntax-case stx ()
+      (syntax-case stx ({ })
         [(_ c (st ...))
          #'(c (st ...))]
+        [(_ c (st ...) '(fns ...) arg ...)
+         #`(rpn-backend c #,(cons #''(fns ...) #'(st ...)) arg ...)]
+        [(_ c (st ...) (fns ...) arg ...)
+         #`(rpn-backend c #,(cons #'(rpnlv fns ...) #'(st ...)) arg ...)]
         [(_ c (st ...) fn arg ...)
          (and (identifier? #'fn)
               (number? (lookup #'fn #'fn-in))
               (number? (lookup #'fn #'fn-out)))
-         #`(rpn-backend c (st ...) (#,(lookup #'fn #'fn-in) #,(lookup #'fn #'fn-out) fn) arg ...)]
+         #`(rpn-backend c (st ...) {#,(lookup #'fn #'fn-in) #,(lookup #'fn #'fn-out) fn} arg ...)]
         [(_ c (st ...) so arg ...)
          (and (identifier? #'so)
               (procedure? (lookup #'so #'key)))
          (let ([parser (lookup #'so #'key)])
             (parser #'(rpn-backend c (st ...) arg ...)))]
-        [(_ c (st ...) (num so) arg ...)
+        [(_ c (st ...) {num so} arg ...)
          (and (identifier? #'so)
               (number? (syntax->datum #'num))
               (procedure? (lookup #'so #'key)))
          (let ([parser (lookup #'so #'key)])
             (parser #'(rpn-backend (num #f) c (st ...) arg ...)))]
-        [(_ c (st ...) (num out so) arg ...)
+        [(_ c (st ...) {num out so} arg ...)
          (and (identifier? #'so)
               (number? (syntax->datum #'num))
               (number? (syntax->datum #'out))
               (procedure? (lookup #'so #'key)))
          (let ([parser (lookup #'so #'key)])
             (parser #'(rpn-backend (num out) c (st ...) arg ...)))]
-        [(_ c (st ...) (num fn) arg ...)
+        [(_ c (st ...) {num fn} arg ...)
           (integer? (syntax->datum #'num))
           (if (>= (length #'(st ...)) (syntax->datum #'num))
-            #`(rpn-backend c #,(drop-n #'(st ...) (syntax->datum #'num))
-                           (mapply fn #,(reverse (take-n #'(st ...) (syntax->datum #'num)))) arg ...)
+            (with-syntax ([(nargs ...) (reverse (take-n #'(st ...) (syntax->datum #'num)))])
+              #`(rpn-backend c #,(cons #'(fn nargs ...) (drop-n #'(st ...) (syntax->datum #'num))) arg ...))
             (syntax-violation 'rpn-backend "stack insufficient size" #'(st ...)))]
-        [(_ c (st ...) (num out fn) arg ...)
+        [(_ c (st ...) {num out fn} arg ...)
          (and (integer? (syntax->datum #'num))
               (integer? (syntax->datum #'out)))
          (if (>= (length #'(st ...)) (syntax->datum #'num))
            (if (= 1 (syntax->datum #'out))
-             #`(rpn-backend c (st ...) (num fn) arg ...)
-             (with-syntax ([tmp (generate-temporaries (make-n (syntax->datum #'out)))])
-             #`(let-values ([tmp (mapply fn #,(reverse (take-n #'(st ...) (syntax->datum #'num))))])
+             #`(rpn-backend c (st ...) {num fn} arg ...)
+             (with-syntax ([tmp (generate-temporaries (make-n (syntax->datum #'out)))]
+                           [(nargs ...) (reverse (take-n #'(st ...) (syntax->datum #'num)))])
+             #`(let-values ([tmp (fn nargs ...)])
                  (rpn-backend c #,(append (reverse #'tmp) (drop-n #'(st ...) (syntax->datum #'num))) arg ...))))
            (syntax-violation 'rpn-backend "stack insufficient size" #'(st ...)))]
         [(_ c (st ...) sym arg* ...)
@@ -383,6 +397,8 @@
     (syntax-case stx ()
      ;[(_ ())
      ; (syntax-violation 'rpn "stack effect is not 1" #'stack)]
+      [(_ (result))
+       #'result]
       [(_ (result ...))
        #`(mapply values #,(reverse #'(result ...)))])))
 
@@ -401,7 +417,7 @@
 (define-syntax arg-count
   (lambda (stx)
     (lambda (lookup)
-      (syntax-case stx ()
+      (syntax-case stx ({ })
       [(_ i f p c)
        (identifier? #'i)
        #`(begin
@@ -442,13 +458,13 @@
           (with-syntax ([new-p (if (< pc 0) (append (generate-temporaries (make-n (- 0 pc))) #'p) #'p)]
                         [new-c (if (< pc 0) (out (syntax->datum #'c) 0) (out (syntax->datum #'c) pc))])
             #`(arg-count i f new-p new-c arg ...)))]
-      [(_ i f p c (num fn) arg ...)
+      [(_ i f p c {num fn} arg ...)
         (integer? (syntax->datum #'num))
         (let ([pc (eval (syntax->datum #'(- c num)))])
           (with-syntax ([new-p (if (< pc 0) (append (generate-temporaries (make-n (- 0 pc))) #'p) #'p)]
                         [new-c (if (< pc 0) #'1 (+ 1 pc))])
             #`(arg-count i f new-p new-c arg ...)))]
-      [(_ i f p c (num out fn) arg ...)
+      [(_ i f p c {num out fn} arg ...)
        (and (integer? (syntax->datum #'num))
             (integer? (syntax->datum #'out)))
        (let ([pc (eval (syntax->datum #'(- c num)))])
@@ -464,23 +480,24 @@
       [(_ i f p c a arg ...)
         #`(arg-count i f p #,(eval (syntax->datum #'(+ c 1))) arg ...)]))))
 
-(define-syntax --
-  (lambda (stx)
-      (syntax-violation '-- "invalid use of keyword" stx)))
-
 (define-syntax rpnl
   (lambda (stx)
-    (syntax-case stx (--)
-    [(_ (in -- out) arg ...)
+    (syntax-case stx ({ })
+    [(_ {in out} arg ...)
+     (and (number? (syntax->datum #'in))
+          (number? (syntax->datum #'out))
+          (= 1 (syntax->datum #'out)))
      (with-syntax ([p (generate-temporaries (make-n (syntax->datum #'in)))])
-              #'(lambda p (mlapply p (rpnv arg ...))))]
+              #'(lambda p (mlapply p (rpn arg ...))))]
     [(_ arg ...)
     #`(arg-count #f (rpn arg ...) () 0 arg ...)])))
 
 (define-syntax rpnlv
   (lambda (stx)
-    (syntax-case stx (--)
-    [(_ (in -- out) arg ...)
+    (syntax-case stx ({ })
+    [(_ {in out} arg ...)
+     (and (number? (syntax->datum #'in))
+          (number? (syntax->datum #'out)))
      (with-syntax ([p (generate-temporaries (make-n (syntax->datum #'in)))])
               #'(lambda p (mlapply p (rpnv arg ...))))]
     [(_ arg ...)
@@ -488,28 +505,10 @@
     
 (define-syntax :
   (lambda (stx)
-    (syntax-case stx (--)
-     [(_ name (in -- out) arg ...)
-      #`(begin
-          #,(with-syntax ([p (generate-temporaries (make-n (syntax->datum #'in)))])
-              #'(define name (lambda p (mlapply p (rpn arg ...)))))
-          (define-property name fn-in
-            (let ([in-num (syntax->datum #'in)])
-              (unless (number? in-num)
-                (assertion-violation 'rpn-fn "invalid in stack effect" in-num))
-              in-num))
-          (define-property name fn-out
-            (let ([out-num (syntax->datum #'out)])
-              (unless (number? out-num)
-                (assertion-violation 'rpn-fn "invalid out stack effect" out-num))
-              out-num)))]
-     [(_ name arg ...)
-      #'(arg-count name (rpn arg ...) () 0 arg ...)])))
-      
-(define-syntax :v
-  (lambda (stx)
-    (syntax-case stx (--)
-     [(_ name (in -- out) arg ...)
+    (syntax-case stx ({ })
+     [(_ name {in out} arg ...)
+      (and (number? (syntax->datum #'in))
+           (number? (syntax->datum #'out)))
       #`(begin
           #,(with-syntax ([p (generate-temporaries (make-n (syntax->datum #'in)))])
               #'(define name (lambda p (mlapply p (rpnv arg ...)))))
@@ -525,14 +524,37 @@
               out-num)))]
      [(_ name arg ...)
       #'(arg-count name (rpnv arg ...) () 0 arg ...)])))
+      
+(define-syntax :s
+  (lambda (stx)
+    (syntax-case stx ({ })
+     [(_ name {in out} arg ...)
+      (and (number? (syntax->datum #'in))
+           (number? (syntax->datum #'out))
+           (= 1 (syntax->datum #'out)))
+      #`(begin
+          #,(with-syntax ([p (generate-temporaries (make-n (syntax->datum #'in)))])
+              #'(define name (lambda p (mlapply p (rpn arg ...)))))
+          (define-property name fn-in
+            (let ([in-num (syntax->datum #'in)])
+              (unless (number? in-num)
+                (assertion-violation 'rpn-fn "invalid in stack effect" in-num))
+              in-num))
+          (define-property name fn-out
+            (let ([out-num (syntax->datum #'out)])
+              (unless (number? out-num)
+                (assertion-violation 'rpn-fn "invalid out stack effect" out-num))
+              out-num)))]
+     [(_ name arg ...)
+      #'(arg-count name (rpn arg ...) () 0 arg ...)])))
 
-(: curry (2 1 (lambda (init f)
+(: curry {2 1 (lambda (init f)
                 (lambda rest
-                  (apply f (cons init rest))))))
+                  (apply f (cons init rest))))})
 
 (define print-forward (lambda (x) (display x) (newline) x))
 
-(: p (1 1 print-forward))
+(: p {1 1 print-forward})
 
-(:v SE dup drop drop)
-(:v dis (1 display) SE (0 newline) SE))
+(: SE dup drop drop)
+(: dis {1 display} SE {0 newline} SE))
