@@ -2,10 +2,10 @@
 Reverse polish notation mini DSL for chezscheme. The stack, and its effects all take place at complie time and are disolved by runtime.
 
 ## Usage
-Their are a couple of main macros rpn, rpnv, rpnl, rpnlv, :, :v. The ones that do not end in 'v' will complie time error if it does not return a single value, it is a compile time error to have 0 or more than 1 results. The ones that end in 'v' allows multiple results and and returns them using schemes values fn for multiple value return.
+Their are a couple of main macros rpn, rpnv, rpnl, rpnlv, :, :s. rpn, rpnl, and :s will all compile time error if you return more than one result or 0 results.
 
 ## Examples
-More in depth examples can be found at: https://github.com/allenj12/rpn-examples/tree/main
+More in depth examples can be found at: https://github.com/allenj12/rpn-examples/tree/main (note, macros going under major changes and some examples might be broken)
 
 If both arguments for numbers are supplied for (* - / + expt) it is calculated at compile time
 ```
@@ -32,7 +32,7 @@ If you want to call a function that is not a basic math operator, the number of 
 (define add3
     (lambda (x y z)
       (+ x y z)))
-(expand '(rpn 1 2 3 (3 add3)))
+(expand '(rpn 1 2 3 {3 add3}))
 (add3 1 2 3)
 ```
 If your function returns multiple values you can specify how many values that are returned to be put back onto the stack
@@ -40,7 +40,7 @@ If your function returns multiple values you can specify how many values that ar
 (define dup3
     (lambda (x)
       (values x x x)))
-(rpn 3 (1 3 dup3) * *)
+(rpn 3 {1 3 dup3} * *)
 27
 ```
 You can define your own stack operators such as dup that do the work at compile time
@@ -73,17 +73,17 @@ Its optional to implement a stack operation that takes in user supplied stack va
 ```
 A slightly bit more involved example
 ```
-(expand '(rpn '(1 2 3) dup (1 car) swap (1 cadr) dup * swap /))
+(expand '(rpn '(1 2 3) dup {1 car} swap {1 cadr} dup * swap /))
 (let ([g44 '(1 2 3)])
   (let ([g45 (cadr g44)])
     (/ (* g45 g45) (car g44))))
   ```
 rpnl and rpnlv are the lambda functions and can be evaled with 'ev'
 ```
-(rpn 1 2 (rpnl +) (3 ev))
+(rpn 1 2 (rpnl +) {3 ev})
 3
 ```
-: and :v define a top level function for you, functions defined with : and :v do not need their stack effects made explicit when calling
+: and :s define a top level function for you, functions defined with : and :v do not need their stack effects made explicit when calling
 ```
 (: x2 dup *)
 (rpn 4 x2)
@@ -91,12 +91,12 @@ rpnl and rpnlv are the lambda functions and can be evaled with 'ev'
 ```
 Here is a more involved example involving factorial
 ```
-(: factorial dup 1 (2 =) (rpnl 1 *) (rpnl dup 1 - factorial *) (4 rif))
+(: factorial dup 1 {2 =} (1 *) (dup 1 - factorial *) {4 rif})
 (factorial 5)
 120
 ```
 Sometimes you might want to override the stack effect that is calculated for you for a function. For example your function might take arguments that you dont move or process. You can explicitly state stack effects as so.
 ```
-(: some-func (3 -- 2) +) ;; This function expects an argument at the bottom of the stack that it will still return again.
+(: some-func {3 2} +) ;; This function expects an argument at the bottom of the stack that it will still return again.
 ```
 Note that the DSL is not really friendly to functions with side-effects. The way around this for the time being is to call 'SE' on a function you only want for the side effects, internally this uses 'dup' to force a let binding and drops binding from the stack keeping the expression without having a void/null on the stack. Their are downsides to this, but should cover most cases.
