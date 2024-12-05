@@ -78,9 +78,9 @@ A slightly bit more involved example
   (let ([g45 (cadr g44)])
     (/ (* g45 g45) (car g44))))
   ```
-rpnl and rpnlv are the lambda functions and can be evaled with 'ev'
+if not already inside a rpn macro, use 'rpnl' or 'rpnlv' to create a lambda. If already inside one of the rpn macros anything wrapped in parens is a lambda function. lambda functions and can be evaled with 'ev'
 ```
-(rpn 1 2 (rpnl +) {3 ev})
+(rpn 1 2 (+) {3 ev})
 3
 ```
 : and :s define a top level function for you, functions defined with : and :v do not need their stack effects made explicit when calling
