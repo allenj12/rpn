@@ -83,7 +83,7 @@ if not already inside a rpn macro, use 'rpnl' or 'rpnlv' to create a lambda. If 
 (rpn 1 2 (+) {3 ev})
 3
 ```
-: and :s define a top level function for you, functions defined with : and :v do not need their stack effects made explicit when calling
+: and :s define a top level function for you, functions defined with : and :s do not need their stack effects made explicit when calling
 ```
 (: x2 dup *)
 (rpn 4 x2)
