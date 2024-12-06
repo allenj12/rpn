@@ -26,6 +26,7 @@
           v
           v.
           curry
+          rcurry
           {
           })
   (import (chezscheme))
@@ -551,6 +552,10 @@
 (: curry {2 1 (lambda (init f)
                 (lambda rest
                   (apply f (cons init rest))))})
+
+(: rcurry {2 1 (lambda (init f)
+                (lambda rest
+                  (apply f (append rest (list init)))))})
 
 (define print-forward (lambda (x) (display x) (newline) x))
 
