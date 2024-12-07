@@ -139,7 +139,11 @@
           2uku1
           2uku2
           3uku1
-          3uku2)
+          3uku2
+          2kuk1
+          2kuk2
+          3kuk1
+          3kuk2)
   (import (chezscheme)
           (rpn))
 
@@ -338,6 +342,12 @@
 (: 4kkk2 {5 5} 4rrot 3dup to-bot to-bot to-bot 4rot {5 2 ev} to-top to-top to-top)
 (: 4kkk3 {5 6} 4rrot 3dup to-bot to-bot to-bot 4rot {5 3 ev} to-top to-top to-top)
 (: 4kkk4 {5 7} 4rrot 3dup to-bot to-bot to-bot 4rot {5 4 ev} to-top to-top to-top)
+
+(: 2kuk1 (rcurry (1k1) rcurry 1u2) rcurry 3k3)
+(: 2kuk2 (rcurry (1k2) rcurry 1u3) rcurry 3k4)
+
+(: 3kuk1 (rcurry (2k1) rcurry 2u2) rcurry 4k3)
+(: 3kuk2 (rcurry (2k2) rcurry 2u3) rcurry 4k4)
 
 (: 2uku1 ((rcurry 1u1) rcurry 3k2) rcurry 3u3)
 (: 2uku2 ((rcurry 1u2) rcurry 3k3) rcurry 3u4)
