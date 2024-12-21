@@ -1,5 +1,5 @@
 #!chezscheme
-(library (rpn-extended-base)
+(library (rpn extended-base)
   (export split
           rsplit
           2dup
@@ -145,7 +145,7 @@
           3kuk1
           3kuk2)
   (import (chezscheme)
-          (rpn))
+          (rpn rpn))
 
 (: split dup {1 cdr} swap {1 car})
 (: rsplit dup {1 car} swap {1 cdr})

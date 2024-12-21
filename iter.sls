@@ -1,5 +1,5 @@
 #!chezscheme
-(library (rpn-iter)
+(library (rpn iter)
     (export repeat1
             repeat2
             repeat3
@@ -16,8 +16,8 @@
             find2
             find3
             find4)
-    (import (rpn)
-            (rpn-extended-base)
+    (import (rpn rpn)
+            (rpn extended-base)
             (chezscheme))
 
 (: repeat1 dup 0 {2 <=}

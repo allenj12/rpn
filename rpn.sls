@@ -1,5 +1,5 @@
 #!chezscheme
-(library (rpn)
+(library (rpn rpn)
   (export rpn
           rpnv
           rpnl
