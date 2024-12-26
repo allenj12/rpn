@@ -329,6 +329,8 @@
          #'(c (st ...))]
         [(_ c (st ...) '(fns ...) arg ...)
          #`(rpn-backend c #,(cons #''(fns ...) #'(st ...)) arg ...)]
+        [(_ c (st ...) 'x arg ...)
+         #`(rpn-backend c #,(cons #''x #'(st ...)) arg ...)]
         [(_ c (st ...) (fns ...) arg ...)
          #`(rpn-backend c #,(cons #'(rpnlv fns ...) #'(st ...)) arg ...)]
         [(_ c (st ...) fn arg ...)
