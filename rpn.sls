@@ -327,10 +327,6 @@
       (syntax-case stx ({ })
         [(_ c (st ...))
          #'(c (st ...))]
-        [(_ c (st ...) '(fns ...) arg ...)
-         #`(rpn-backend c #,(cons #''(fns ...) #'(st ...)) arg ...)]
-        [(_ c (st ...) (fns ...) arg ...)
-         #`(rpn-backend c #,(cons #'(rpnlv fns ...) #'(st ...)) arg ...)]
         [(_ c (st ...) fn arg ...)
          (and (identifier? #'fn)
               (number? (lookup #'fn #'fn-in))
@@ -382,6 +378,14 @@
                    #`(rpn-backend c #,(cons (eval (syntax->datum #'(sym s f))) #'rest) arg* ...)
                    #`(rpn-backend c #,(cons #'(sym s f) #'rest) arg* ...)))
            (syntax-violation 'rpn-backend "stack insufficient size" #'(st ...)))]
+        [(_ c (st ...) '(fns ...) arg ...)
+         #`(rpn-backend c #,(cons #''(fns ...) #'(st ...)) arg ...)]
+        [(_ c (st ...) (x y) arg ...)
+         (and (identifier? #'x)
+              (free-identifier=? #'x #'quote))
+         #`(rpn-backend c #,(cons #''y #'(st ...)) arg ...)]
+        [(_ c (st ...) (fns ...) arg ...)
+         #`(rpn-backend c #,(cons #'(rpnlv fns ...) #'(st ...)) arg ...)]
         [(_ c (st ...) x arg* ...)
          #`(rpn-backend c #,(cons #'x #'(st ...)) arg* ...)]))))
 
