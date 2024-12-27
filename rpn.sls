@@ -190,6 +190,18 @@
         #`(macro c #,(list (car #'stack)) args ...)
         (syntax-violation 'skim "stack is empty, can't skim" #'stack))])))
 
+(define-stack-operation SE
+  (lambda (old) (- old 1))
+  (lambda (old new) new)
+  (lambda (stx)
+    (syntax-case stx ()
+    [(macro c stack args ...)
+     (if (not (null? #'stack))
+        #`(begin
+            #,(car #'stack)
+            (macro c #,(cdr #'stack) args ...))
+        (syntax-violation 'SE "stack is empty, can't SE" #'stack))])))
+
 (define-stack-operation dup
   (lambda (old) (- old 1))
   (lambda (old new) (+ new 2))
@@ -561,9 +573,6 @@
                 (lambda rest
                   (apply f (append rest (list init)))))})
 
-(define print-forward (lambda (x) (display x) (newline) x))
+(: dis {1 display} SE {0 newline} SE)
 
-(: p {1 1 print-forward})
-
-(: SE dup drop drop)
-(: dis {1 display} SE {0 newline} SE))
+(: p dup dis))
