@@ -336,7 +336,7 @@
 (define-syntax rpn-backend
   (lambda (stx)
     (lambda (lookup)
-      (syntax-case stx ({ })
+      (syntax-case stx ({ } quote)
         [(_ c (st ...))
          #'(c (st ...))]
         [(_ c (st ...) fn arg ...)
@@ -390,11 +390,7 @@
                    #`(rpn-backend c #,(cons (eval (syntax->datum #'(sym s f))) #'rest) arg* ...)
                    #`(rpn-backend c #,(cons #'(sym s f) #'rest) arg* ...)))
            (syntax-violation 'rpn-backend "stack insufficient size" #'(st ...)))]
-        [(_ c (st ...) '(fns ...) arg ...)
-         #`(rpn-backend c #,(cons #''(fns ...) #'(st ...)) arg ...)]
-        [(_ c (st ...) (x y) arg ...)
-         (and (identifier? #'x)
-              (free-identifier=? #'x #'quote))
+        [(_ c (st ...) (quote y) arg ...)
          #`(rpn-backend c #,(cons #''y #'(st ...)) arg ...)]
         [(_ c (st ...) (fns ...) arg ...)
          #`(rpn-backend c #,(cons #'(rpnlv fns ...) #'(st ...)) arg ...)]
